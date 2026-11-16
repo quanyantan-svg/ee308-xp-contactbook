@@ -4,7 +4,7 @@ PairBook 是 EE308 Extreme Programming 双人课程项目，一个使用 Vue 3�
 
 ## 当前状态
 
-Phase A 核心应用与 Phase B Excel 数据交换已实现：
+Phase A 核心应用、Phase B Excel 数据交换与 Phase C 联系方式集成已实现：
 
 - 新增、编辑和删除联系人；
 - 按姓名、公司及已有联系方式搜索；
@@ -16,14 +16,11 @@ Phase A 核心应用与 Phase B Excel 数据交换已实现：
 - 核心业务、持久化和基础表单测试；
 - Excel `.xlsx` 动态列导出、标准模板下载；
 - Excel 导入校验、错误定位、ID 冲突预览和原子批量应用；
-- 导出后再导入的完整数据往返测试。
+- 导出后再导入的完整数据往返测试；
+- 单个联系人可新增、编辑和删除多条电话、邮箱、社交账号、地址或其他联系方式；
+- 联系方式校验、联系人表单集成、localStorage 恢复和 Excel 往返回归测试。
 
-尚未完成：
-
-- 队友负责的多联系方式编辑器及其校验模块；
-- 联系方式编辑器合并后的最终集成测试。
-
-当前表单会完整保留联系人已有的 `ContactMethod[]`，但在队友模块合并前不提供联系方式新增或编辑入口。项目没有账号、后端、MySQL 或多用户同步功能。
+联系人表单中的联系方式必须先在编辑器内点击“添加”或“保存”确认，再保存整位联系人；未确认草稿不会静默写入。取消联系人表单不会持久化任何草稿修改。项目没有账号、后端、MySQL 或多用户同步功能。
 
 ## 技术栈
 
@@ -66,7 +63,7 @@ src/
 ├─ composables/    # Vue 状态编排
 ├─ services/       # 核心联系人规则与 localStorage 仓储
 └─ types/          # 冻结的共享数据契约
-tests/             # Phase A 核心自动化测试
+tests/             # 核心、Excel、联系方式组件与集成自动化测试
 docs/              # 需求、模块契约与协作规范
 ```
 
@@ -78,4 +75,4 @@ docs/              # 需求、模块契约与协作规范
 - `docs/CONTACT_METHODS_CONTRACT.md`
 - `docs/CODING_STANDARDS.md`
 
-`src/components/ContactMethodsEditor.vue`、`src/utils/contactValidation.ts` 和 `tests/contactValidation.test.ts` 由队友独立负责，Phase A 核心实现不创建或修改这些文件。
+`src/components/ContactMethodsEditor.vue`、`src/utils/contactValidation.ts`、`tests/contactValidation.test.ts` 和 `tests/ContactMethodsEditor.test.ts` 由队友实现并维护；主应用通过冻结的 `v-model` 接口完成集成。

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { Heart, X } from 'lucide-vue-next'
-import type { Contact } from '../types/contact'
+import ContactMethodsEditor from './ContactMethodsEditor.vue'
 import type { ContactDraft } from '../services/contactService'
+import type { Contact } from '../types/contact'
 
 const props = defineProps<{
   contact: Contact | null
@@ -14,6 +15,8 @@ const emit = defineEmits<{
 }>()
 
 const nameError = ref('')
+const methodsDraftError = ref('')
+const methodsEditorRoot = ref<HTMLElement | null>(null)
 const draft = reactive<ContactDraft>({
   name: props.contact?.name ?? '',
   company: props.contact?.company ?? '',
@@ -24,10 +27,47 @@ const draft = reactive<ContactDraft>({
 
 const title = computed(() => (props.contact ? '编辑联系人' : '新建联系人'))
 
+function hasUnconfirmedMethodDraft(): boolean {
+  const root = methodsEditorRoot.value
+  if (!root) return false
+
+  if (root.querySelector('[data-testid="edit-form"]')) {
+    return true
+  }
+
+  const type = root.querySelector<HTMLSelectElement>('[data-testid="new-type"]')
+  const label = root.querySelector<HTMLInputElement>('[data-testid="new-label"]')
+  const value = root.querySelector<HTMLInputElement>('[data-testid="new-value"]')
+
+  return Boolean(
+    (type && type.value !== 'phone') ||
+      label?.value.trim() ||
+      value?.value.trim(),
+  )
+}
+
+function focusUnconfirmedMethodDraft(): void {
+  const root = methodsEditorRoot.value
+  const control =
+    root?.querySelector<HTMLElement>('[data-testid="edit-form"] input') ??
+    root?.querySelector<HTMLElement>('[data-testid="new-label"]')
+  control?.focus()
+}
+
+function handleMethodsConfirmed(): void {
+  methodsDraftError.value = ''
+}
+
 function submit(): void {
   nameError.value = draft.name.trim() ? '' : '请输入联系人姓名'
+  methodsDraftError.value = hasUnconfirmedMethodDraft()
+    ? '请先在联系方式区域点击“添加”或“保存”，或取消未确认的编辑，再保存联系人。'
+    : ''
 
-  if (nameError.value) {
+  if (nameError.value || methodsDraftError.value) {
+    if (methodsDraftError.value) {
+      focusUnconfirmedMethodDraft()
+    }
     return
   }
 
@@ -44,7 +84,7 @@ function submit(): void {
       class="contact-form"
       role="dialog"
       aria-modal="true"
-      :aria-labelledby="`contact-form-title`"
+      aria-labelledby="contact-form-title"
     >
       <header class="contact-form__header">
         <div>
@@ -56,71 +96,98 @@ function submit(): void {
         </button>
       </header>
 
-      <form novalidate @submit.prevent="submit">
-        <div class="field">
-          <label for="contact-name">姓名 <span aria-hidden="true">*</span></label>
-          <input
-            id="contact-name"
-            v-model="draft.name"
-            type="text"
-            autocomplete="name"
-            placeholder="例如：林晓"
-            :aria-invalid="Boolean(nameError)"
-            :aria-describedby="nameError ? 'contact-name-error' : undefined"
-            autofocus
-            @input="nameError = ''"
-          />
-          <p v-if="nameError" id="contact-name-error" class="field__error" role="alert">
-            {{ nameError }}
+      <div class="contact-form__body">
+        <form
+          id="contact-core-form"
+          class="contact-core-form"
+          novalidate
+          data-testid="contact-core-form"
+          @submit.prevent="submit"
+        >
+          <div class="field">
+            <label for="contact-name">姓名 <span aria-hidden="true">*</span></label>
+            <input
+              id="contact-name"
+              v-model="draft.name"
+              type="text"
+              autocomplete="name"
+              placeholder="例如：林晓"
+              :aria-invalid="Boolean(nameError)"
+              :aria-describedby="nameError ? 'contact-name-error' : undefined"
+              autofocus
+              @input="nameError = ''"
+            />
+            <p v-if="nameError" id="contact-name-error" class="field__error" role="alert">
+              {{ nameError }}
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="contact-company">公司或组织</label>
+            <input
+              id="contact-company"
+              v-model="draft.company"
+              type="text"
+              autocomplete="organization"
+              placeholder="选填"
+            />
+          </div>
+
+          <div class="field">
+            <label for="contact-note">备注</label>
+            <textarea
+              id="contact-note"
+              v-model="draft.note"
+              rows="4"
+              placeholder="记录称呼、背景或下次联系事项"
+            ></textarea>
+          </div>
+
+          <label class="favorite-field">
+            <input v-model="draft.favorite" type="checkbox" />
+            <span class="favorite-field__icon">
+              <Heart :size="18" :fill="draft.favorite ? 'currentColor' : 'none'" aria-hidden="true" />
+            </span>
+            <span>
+              <strong>设为收藏</strong>
+              <small>在收藏筛选中快速找到这位联系人</small>
+            </span>
+          </label>
+        </form>
+
+        <div ref="methodsEditorRoot" class="methods-integration">
+          <p class="methods-integration__hint">
+            新增或编辑内容需先在本区域点击“添加”或“保存”，确认后才会随联系人保存。
           </p>
-        </div>
-
-        <div class="field">
-          <label for="contact-company">公司或组织</label>
-          <input
-            id="contact-company"
-            v-model="draft.company"
-            type="text"
-            autocomplete="organization"
-            placeholder="选填"
+          <ContactMethodsEditor
+            v-model="draft.methods"
+            @update:model-value="handleMethodsConfirmed"
           />
         </div>
 
-        <div class="field">
-          <label for="contact-note">备注</label>
-          <textarea
-            id="contact-note"
-            v-model="draft.note"
-            rows="4"
-            placeholder="记录称呼、背景或下次联系事项"
-          ></textarea>
-        </div>
+        <p
+          v-if="methodsDraftError"
+          id="contact-methods-draft-error"
+          class="methods-draft-error"
+          role="alert"
+        >
+          {{ methodsDraftError }}
+        </p>
+      </div>
 
-        <label class="favorite-field">
-          <input v-model="draft.favorite" type="checkbox" />
-          <span class="favorite-field__icon">
-            <Heart :size="18" :fill="draft.favorite ? 'currentColor' : 'none'" aria-hidden="true" />
-          </span>
-          <span>
-            <strong>设为收藏</strong>
-            <small>在收藏筛选中快速找到这位联系人</small>
-          </span>
-        </label>
-
-        <div v-if="draft.methods.length" class="preserved-methods">
-          <strong>已有联系方式</strong>
-          <p>本次编辑会完整保留 {{ draft.methods.length }} 条联系方式。</p>
-        </div>
-
-        <footer class="contact-form__actions">
-          <button type="button" class="button button--secondary" @click="$emit('cancel')">
-            取消
-          </button>
-          <button type="submit" class="button button--primary">
-            {{ contact ? '保存修改' : '添加联系人' }}
-          </button>
-        </footer>
-      </form>
+      <footer class="contact-form__actions">
+        <button type="button" class="button button--secondary" @click="$emit('cancel')">
+          取消
+        </button>
+        <button
+          type="submit"
+          form="contact-core-form"
+          class="button button--primary"
+          data-testid="contact-save"
+        >
+          {{ contact ? '保存修改' : '添加联系人' }}
+        </button>
+      </footer>
     </section>
   </div>
 </template>
@@ -139,8 +206,20 @@ function submit(): void {
 }
 
 .contact-form {
-  width: min(100%, 560px);
+  --text-h: var(--text-strong);
+  --text: var(--text-body);
+  --bg: var(--surface);
+  --border: var(--border-subtle);
+  --accent: var(--brand);
+  --accent-bg: var(--brand-soft);
+  --accent-border: var(--brand);
+  --social-bg: var(--surface-muted);
+
+  display: flex;
+  width: min(100%, 780px);
+  max-height: calc(100svh - 48px);
   overflow: hidden;
+  flex-direction: column;
   border: 1px solid rgb(255 255 255 / 65%);
   border-radius: 24px;
   background: var(--surface);
@@ -149,10 +228,11 @@ function submit(): void {
 
 .contact-form__header {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding: 28px 30px 22px;
+  padding: 24px 30px 20px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -190,10 +270,18 @@ function submit(): void {
   background: var(--border-subtle);
 }
 
-form {
+.contact-form__body {
+  display: grid;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 24px;
+  padding: 24px 30px;
+  overscroll-behavior: contain;
+}
+
+.contact-core-form {
   display: grid;
   gap: 20px;
-  padding: 26px 30px 30px;
 }
 
 .field {
@@ -244,6 +332,7 @@ form {
 }
 
 .field__error {
+  margin: 0;
   color: var(--danger);
   font-size: 0.8rem;
 }
@@ -305,28 +394,39 @@ form {
   font-size: 0.76rem;
 }
 
-.preserved-methods {
-  padding: 12px 14px;
-  border-left: 3px solid var(--brand);
-  border-radius: 0 10px 10px 0;
-  background: var(--brand-soft);
-  font-size: 0.82rem;
+.methods-integration {
+  display: grid;
+  gap: 14px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-subtle);
 }
 
-.preserved-methods strong {
-  color: var(--text-strong);
-}
-
-.preserved-methods p {
-  margin: 3px 0 0;
+.methods-integration__hint {
+  margin: 0;
   color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.methods-draft-error {
+  margin: -8px 0 0;
+  padding: 11px 13px;
+  border: 1px solid #efc7c3;
+  border-radius: 10px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .contact-form__actions {
   display: flex;
+  flex: 0 0 auto;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 6px;
+  padding: 18px 30px 22px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface);
 }
 
 @media (max-width: 560px) {
@@ -337,18 +437,35 @@ form {
 
   .contact-form {
     max-height: calc(100svh - 24px);
-    overflow-y: auto;
     border-radius: 20px;
   }
 
   .contact-form__header,
-  form {
+  .contact-form__body,
+  .contact-form__actions {
     padding-right: 20px;
     padding-left: 20px;
   }
 
   .contact-form__actions .button {
     flex: 1;
+  }
+}
+
+@media (max-width: 360px) {
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .contact-form {
+    max-height: calc(100svh - 16px);
+  }
+
+  .contact-form__header,
+  .contact-form__body,
+  .contact-form__actions {
+    padding-right: 15px;
+    padding-left: 15px;
   }
 }
 </style>
