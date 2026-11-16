@@ -8,6 +8,7 @@ import {
   type ContactDraft,
 } from '../services/contactService'
 import { loadContacts, saveContacts } from '../services/contactStorage'
+import type { ApplyImportResult } from '../services/contactExcel'
 import type { Contact } from '../types/contact'
 
 export type FeedbackKind = 'success' | 'error'
@@ -123,6 +124,14 @@ export function useContacts() {
     }
   }
 
+  function applyImportedContacts(result: ApplyImportResult): boolean {
+    const appliedCount = result.addedCount + result.replacedCount
+    return persist(
+      result.contacts,
+      `导入完成：应用 ${appliedCount} 条，跳过 ${result.skippedCount} 条冲突记录`,
+    )
+  }
+
   initialize()
 
   return {
@@ -136,6 +145,7 @@ export function useContacts() {
     editContact,
     removeContact,
     toggleFavorite,
+    applyImportedContacts,
     clearFeedback,
   }
 }

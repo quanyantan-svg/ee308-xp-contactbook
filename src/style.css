@@ -244,6 +244,34 @@ main {
   letter-spacing: -0.025em;
 }
 
+.excel-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f7faf8, #eef6f2);
+}
+
+.excel-panel > div:first-child strong,
+.excel-panel > div:first-child span {
+  display: block;
+}
+
+.excel-panel > div:first-child strong {
+  color: var(--text-strong);
+  font-size: 0.82rem;
+}
+
+.excel-panel > div:first-child span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
 .button {
   display: inline-flex;
   min-height: 43px;
@@ -558,6 +586,11 @@ main {
   }
 
   .workspace__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .excel-panel {
     align-items: stretch;
     flex-direction: column;
   }

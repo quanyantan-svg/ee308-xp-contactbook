@@ -12,6 +12,7 @@ import {
 import ContactCard from './components/ContactCard.vue'
 import ContactForm from './components/ContactForm.vue'
 import DeleteConfirmDialog from './components/DeleteConfirmDialog.vue'
+import ExcelActions from './components/ExcelActions.vue'
 import { useContacts } from './composables/useContacts'
 import type { ContactDraft } from './services/contactService'
 import type { Contact } from './types/contact'
@@ -27,6 +28,7 @@ const {
   editContact,
   removeContact,
   toggleFavorite,
+  applyImportedContacts,
   clearFeedback,
 } = useContacts()
 
@@ -132,6 +134,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape))
             <Plus :size="18" aria-hidden="true" />
             新建联系人
           </button>
+        </div>
+
+        <div class="excel-panel">
+          <div>
+            <strong>Excel 数据交换</strong>
+            <span>导入、备份或下载标准模板</span>
+          </div>
+          <ExcelActions :contacts="contacts" @apply="applyImportedContacts" />
         </div>
 
         <div class="toolbar">
